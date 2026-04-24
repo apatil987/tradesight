@@ -1,16 +1,18 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/db/supabase-server'
-import { insertTrade } from '@/lib/db/trades'
+import { updateTrade } from '@/lib/db/trades'
 import { calculatePnl, calculateScore } from '@/lib/scoring'
-import type { TradeInsert } from '@/types'
+import type { TradeUpdate } from '@/types'
 
-export async function POST(request: Request) {
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let body: Record<string, unknown>
   try {
@@ -27,10 +29,10 @@ export async function POST(request: Request) {
   }
 
   const pnl = calculatePnl({
-    exit_price: body.exit_price as number | null,
+    exit_price: (body.exit_price as number) ?? null,
     entry_price: body.entry_price as number,
     quantity: body.quantity as number,
-    option_type: body.option_type as string | null,
+    option_type: (body.option_type as string) ?? null,
   })
 
   const score = calculateScore({
@@ -40,11 +42,10 @@ export async function POST(request: Request) {
     exit_price: (body.exit_price as number) ?? null,
   })
 
-  const trade: TradeInsert = {
-    user_id: user.id,
+  const update: TradeUpdate = {
     ticker: (body.ticker as string).toUpperCase(),
-    asset_type: body.asset_type as TradeInsert['asset_type'],
-    option_type: (body.option_type as TradeInsert['option_type']) ?? null,
+    asset_type: body.asset_type as TradeUpdate['asset_type'],
+    option_type: (body.option_type as TradeUpdate['option_type']) ?? null,
     strike: (body.strike as number) ?? null,
     expiration: (body.expiration as string) ?? null,
     quantity: body.quantity as number,
@@ -59,8 +60,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const saved = await insertTrade(trade)
-    return NextResponse.json(saved, { status: 201 })
+    const updated = await updateTrade(id, user.id, update)
+    return NextResponse.json(updated)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Database error'
     return NextResponse.json({ error: message }, { status: 500 })

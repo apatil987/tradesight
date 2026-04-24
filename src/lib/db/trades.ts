@@ -1,5 +1,5 @@
 import { createClient } from './supabase-server'
-import type { Trade, TradeInsert } from '@/types'
+import type { Trade, TradeInsert, TradeUpdate } from '@/types'
 
 export async function getTrades(userId: string): Promise<Trade[]> {
   const supabase = await createClient()
@@ -23,6 +23,20 @@ export async function getTradeById(id: string, userId: string): Promise<Trade | 
     .single()
 
   if (error) return null
+  return data as Trade
+}
+
+export async function updateTrade(id: string, userId: string, update: TradeUpdate): Promise<Trade> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('trades')
+    .update(update)
+    .eq('id', id)
+    .eq('user_id', userId)
+    .select()
+    .single()
+
+  if (error) throw new Error(error.message)
   return data as Trade
 }
 

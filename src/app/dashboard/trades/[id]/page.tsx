@@ -72,9 +72,17 @@ export default async function TradeDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div className="max-w-3xl space-y-6">
-      <Link href="/dashboard/history" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
-        ← Back to Trade History
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link href="/dashboard/history" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
+          ← Back to Trade History
+        </Link>
+        <Link
+          href={`/dashboard/trades/${id}/edit`}
+          className="px-4 py-1.5 text-sm font-medium bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg transition-colors"
+        >
+          Edit
+        </Link>
+      </div>
 
       {/* Trade Summary */}
       <div className="bg-gray-900 rounded-xl p-6">

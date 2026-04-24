@@ -1,6 +1,18 @@
 // v1 scoring — entry/exit proxied from price direction, no market data.
 // Full formula (5-min price movement, intraday high/low) requires Phase 2 market data.
 
+export function calculatePnl(trade: {
+  exit_price: number | null
+  entry_price: number
+  quantity: number
+  option_type: string | null
+}): number | null {
+  if (trade.exit_price === null) return null
+  return trade.option_type === 'put'
+    ? (trade.entry_price - trade.exit_price) * trade.quantity
+    : (trade.exit_price - trade.entry_price) * trade.quantity
+}
+
 function entryScore(pnl: number | null): number {
   if (pnl === null) return 50
   return pnl > 0 ? 80 : pnl === 0 ? 50 : 20
