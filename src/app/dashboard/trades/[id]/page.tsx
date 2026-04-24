@@ -2,8 +2,10 @@ import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/db/supabase-server'
 import { getTradeById } from '@/lib/db/trades'
-import { getSubScores } from '@/lib/scoring'
+import { getSubScores, calculateScoreWithMarketData } from '@/lib/scoring'
 import { generateTradeCoaching } from '@/lib/coaching'
+import { fetchMarketData } from '@/lib/market-data'
+import WhatIfSection from '@/components/trades/WhatIfSection'
 
 function scoreLabel(score: number): string {
   if (score >= 90) return 'Elite'
@@ -20,7 +22,10 @@ function scoreLabelColor(score: number): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+  })
 }
 
 function formatHoldTime(entry: string, exit: string | null): string {
@@ -36,10 +41,7 @@ function ScoreBar({ label, score }: { label: string; score: number }) {
     <div className="flex items-center gap-3">
       <span className="w-28 text-sm text-gray-400 shrink-0">{label}</span>
       <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-blue-500 rounded-full transition-all"
-          style={{ width: `${score}%` }}
-        />
+        <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${score}%` }} />
       </div>
       <span className="w-16 text-right text-sm text-white shrink-0">
         {score} <span className={`text-xs ${scoreLabelColor(score)}`}>{scoreLabel(score)}</span>
@@ -58,15 +60,32 @@ export default async function TradeDetailPage({ params }: { params: Promise<{ id
   const trade = await getTradeById(id, user.id)
   if (!trade) notFound()
 
-  const subScores = getSubScores(trade)
-  const overallScore = trade.score
-  const hasPnl = trade.pnl !== null
-  const coachInsights = generateTradeCoaching(trade, subScores)
+  // Fetch real market data for closed stock trades only
+  const canFetchMarketData =
+    trade.asset_type === 'stock' &&
+    trade.exit_time !== null &&
+    trade.exit_price !== null
 
-  const pnlText = !hasPnl
-    ? '—'
-    : trade.pnl! >= 0
-    ? `+$${trade.pnl!.toFixed(2)}`
+  const marketData = canFetchMarketData
+    ? await fetchMarketData(trade.ticker, trade.entry_time, trade.exit_time!)
+    : null
+
+  // Use real scoring when market data is available, otherwise v1 proxy
+  const { subScores, overallScore } = marketData
+    ? (() => {
+        const result = calculateScoreWithMarketData(trade, marketData)
+        return { subScores: result.subScores, overallScore: result.score }
+      })()
+    : { subScores: getSubScores(trade), overallScore: trade.score }
+
+  const coachInsights = generateTradeCoaching(
+    { ...trade, score: overallScore },
+    subScores,
+  )
+
+  const hasPnl = trade.pnl !== null
+  const pnlText = !hasPnl ? '—'
+    : trade.pnl! >= 0 ? `+$${trade.pnl!.toFixed(2)}`
     : `-$${Math.abs(trade.pnl!).toFixed(2)}`
   const pnlColor = !hasPnl ? 'text-gray-500' : trade.pnl! > 0 ? 'text-green-400' : 'text-red-400'
 
@@ -109,7 +128,9 @@ export default async function TradeDetailPage({ params }: { params: Promise<{ id
           </div>
           <div>
             <p className="text-gray-500 text-xs mb-1">Exit Price</p>
-            <p className="text-white font-medium">{trade.exit_price !== null ? `$${trade.exit_price.toFixed(2)}` : '—'}</p>
+            <p className="text-white font-medium">
+              {trade.exit_price !== null ? `$${trade.exit_price.toFixed(2)}` : '—'}
+            </p>
           </div>
           <div>
             <p className="text-gray-500 text-xs mb-1">Quantity</p>
@@ -122,17 +143,20 @@ export default async function TradeDetailPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      {/* P&L + Score side by side */}
+      {/* P&L + Score */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        {/* P&L */}
         <div className="bg-gray-900 rounded-xl p-6 flex flex-col justify-center">
           <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Profit / Loss</p>
           <p className={`text-5xl font-bold ${pnlColor}`}>{pnlText}</p>
         </div>
 
-        {/* Score Breakdown */}
         <div className="bg-gray-900 rounded-xl p-6">
-          <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Trade Score</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Trade Score</p>
+            {marketData && (
+              <span className="text-xs text-blue-400">Live market data</span>
+            )}
+          </div>
           {overallScore !== null ? (
             <>
               <div className="flex items-baseline gap-2 mb-5">
@@ -155,12 +179,12 @@ export default async function TradeDetailPage({ params }: { params: Promise<{ id
       </div>
 
       {/* What-If Analysis */}
-      <div className="bg-gray-900 rounded-xl p-6">
-        <h2 className="text-sm font-semibold text-white mb-2">What-If Analysis</h2>
-        <p className="text-sm text-gray-500">
-          Coming soon — will show what you would have made holding 5 or 10 minutes longer once market data is connected.
-        </p>
-      </div>
+      <WhatIfSection
+        entryPrice={trade.entry_price}
+        quantity={trade.quantity}
+        pnl={trade.pnl}
+        marketData={marketData}
+      />
 
       {/* Coach Insight */}
       {coachInsights.length > 0 && (

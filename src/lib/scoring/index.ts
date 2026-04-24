@@ -60,3 +60,54 @@ export function getSubScores(trade: {
     capture: captureScore(trade.pnl),
   }
 }
+
+// --- Market-data scoring (real formula, requires fetchMarketData result) ---
+
+function entryScoreReal(movedInFavor: boolean | null, fallbackPnl: number | null): number {
+  if (movedInFavor === null) return entryScore(fallbackPnl)
+  return movedInFavor ? 100 : 0
+}
+
+function exitScoreReal(actualPnl: number | null, maxPossiblePnl: number | null): number {
+  if (actualPnl === null || maxPossiblePnl === null || maxPossiblePnl <= 0) return 50
+  const pct = (actualPnl / maxPossiblePnl) * 100
+  if (pct >= 90) return 100
+  if (pct >= 70) return 80
+  if (pct >= 50) return 60
+  if (pct >= 25) return 40
+  return 20
+}
+
+function captureScoreReal(actualPnl: number | null, maxPossiblePnl: number | null): number {
+  if (actualPnl === null || maxPossiblePnl === null || maxPossiblePnl <= 0) return 0
+  return Math.min(100, Math.max(0, Math.round((actualPnl / maxPossiblePnl) * 100)))
+}
+
+export function calculateScoreWithMarketData(
+  trade: {
+    pnl: number | null
+    entry_price: number
+    quantity: number
+    exit_price: number | null
+  },
+  marketData: {
+    moved_in_favor: boolean | null
+    max_high_during_hold: number | null
+  },
+): { score: number | null; subScores: { entry: number; exit: number; capture: number } } {
+  if (trade.exit_price === null) {
+    return { score: null, subScores: { entry: 50, exit: 50, capture: 0 } }
+  }
+
+  const maxPossiblePnl =
+    marketData.max_high_during_hold !== null
+      ? (marketData.max_high_during_hold - trade.entry_price) * trade.quantity
+      : null
+
+  const e = entryScoreReal(marketData.moved_in_favor, trade.pnl)
+  const x = exitScoreReal(trade.pnl, maxPossiblePnl)
+  const c = captureScoreReal(trade.pnl, maxPossiblePnl)
+  const score = Math.round(e * 0.4 + x * 0.4 + c * 0.2)
+
+  return { score, subScores: { entry: e, exit: x, capture: c } }
+}
