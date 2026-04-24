@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/db/supabase-server'
 import { getTradeById } from '@/lib/db/trades'
 import { getSubScores } from '@/lib/scoring'
+import { generateTradeCoaching } from '@/lib/coaching'
 
 function scoreLabel(score: number): string {
   if (score >= 90) return 'Elite'
@@ -60,6 +61,7 @@ export default async function TradeDetailPage({ params }: { params: Promise<{ id
   const subScores = getSubScores(trade)
   const overallScore = trade.score
   const hasPnl = trade.pnl !== null
+  const coachInsights = generateTradeCoaching(trade, subScores)
 
   const pnlText = !hasPnl
     ? '—'
@@ -151,6 +153,21 @@ export default async function TradeDetailPage({ params }: { params: Promise<{ id
           Coming soon — will show what you would have made holding 5 or 10 minutes longer once market data is connected.
         </p>
       </div>
+
+      {/* Coach Insight */}
+      {coachInsights.length > 0 && (
+        <div className="bg-gray-900 rounded-xl p-6 border border-blue-900/40">
+          <h2 className="text-sm font-semibold text-white mb-4">Coach Insight</h2>
+          <ul className="space-y-3">
+            {coachInsights.map((insight, i) => (
+              <li key={i} className="flex gap-2.5 items-start">
+                <span className="text-base leading-5 shrink-0">💡</span>
+                <span className="text-sm text-gray-300">{insight}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Notes & Tags */}
       <div className="bg-gray-900 rounded-xl p-6">
