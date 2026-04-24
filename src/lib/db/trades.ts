@@ -1,6 +1,24 @@
 import { createClient } from './supabase-server'
 import type { Trade, TradeInsert } from '@/types'
 
+export async function getTrades(userId: string): Promise<Trade[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('trades')
+    .select('*')
+    .eq('user_id', userId)
+    .order('entry_time', { ascending: false })
+
+  if (error) throw new Error(error.message)
+  return (data ?? []) as Trade[]
+}
+
+export async function deleteTrade(id: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.from('trades').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
 export async function insertTrade(trade: TradeInsert): Promise<Trade> {
   const supabase = await createClient()
   const { data, error } = await supabase
