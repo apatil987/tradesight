@@ -25,6 +25,7 @@ Phase 1 — project setup and scaffolding
 - src/lib/scoring — trade scoring logic
 - src/lib/db — all Supabase queries
 - src/types/index.ts — all shared TypeScript types
+- docs/product-plan.md — full product requirements, read this for feature context
 
 ## Rules
 - Always write TypeScript, never plain JS
