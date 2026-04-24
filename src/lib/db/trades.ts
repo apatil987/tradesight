@@ -13,6 +13,19 @@ export async function getTrades(userId: string): Promise<Trade[]> {
   return (data ?? []) as Trade[]
 }
 
+export async function getTradeById(id: string, userId: string): Promise<Trade | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('trades')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single()
+
+  if (error) return null
+  return data as Trade
+}
+
 export async function deleteTrade(id: string): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase.from('trades').delete().eq('id', id)

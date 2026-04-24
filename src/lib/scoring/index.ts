@@ -36,3 +36,15 @@ export function calculateScore(trade: {
   const c = captureScore(trade.pnl)
   return Math.round(e * 0.4 + x * 0.4 + c * 0.2)
 }
+
+export function getSubScores(trade: {
+  pnl: number | null
+  entry_price: number
+  quantity: number
+}): { entry: number; exit: number; capture: number } {
+  return {
+    entry: entryScore(trade.pnl),
+    exit: exitScore(trade.pnl, trade.entry_price, trade.quantity),
+    capture: captureScore(trade.pnl),
+  }
+}

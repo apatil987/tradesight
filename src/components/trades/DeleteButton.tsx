@@ -6,7 +6,8 @@ import { deleteTradeAction } from '@/lib/actions/trades'
 export default function DeleteButton({ tradeId }: { tradeId: string }) {
   const [isPending, startTransition] = useTransition()
 
-  function handleClick() {
+  function handleClick(e: React.MouseEvent) {
+    e.stopPropagation()
     if (!confirm('Delete this trade?')) return
     startTransition(() => deleteTradeAction(tradeId))
   }

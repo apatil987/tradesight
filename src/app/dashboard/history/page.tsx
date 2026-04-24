@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/db/supabase-server'
 import { getTrades } from '@/lib/db/trades'
 import DeleteButton from '@/components/trades/DeleteButton'
+import ClickableRow from '@/components/trades/ClickableRow'
 import type { Trade } from '@/types'
 
 function formatDate(iso: string) {
@@ -53,7 +54,7 @@ export default async function HistoryPage() {
               {trades.map((trade) => {
                 const pnl = formatPnl(trade.pnl)
                 return (
-                  <tr key={trade.id} className="hover:bg-gray-900/50 transition-colors">
+                  <ClickableRow key={trade.id} href={`/dashboard/trades/${trade.id}`}>
                     <td className="py-3 pr-6 font-semibold text-white">
                       {trade.ticker}
                       {trade.option_type && (
@@ -85,7 +86,7 @@ export default async function HistoryPage() {
                     <td className="py-3">
                       <DeleteButton tradeId={trade.id} />
                     </td>
-                  </tr>
+                  </ClickableRow>
                 )
               })}
             </tbody>
