@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/db/supabase-server'
 import { insertTrade } from '@/lib/db/trades'
+import { calculateScore } from '@/lib/scoring'
 import type { TradeInsert } from '@/types'
 
 function calculatePnl(body: {
@@ -45,6 +46,13 @@ export async function POST(request: Request) {
     option_type: body.option_type as string | null,
   })
 
+  const score = calculateScore({
+    pnl,
+    entry_price: body.entry_price as number,
+    quantity: body.quantity as number,
+    exit_price: (body.exit_price as number) ?? null,
+  })
+
   const trade: TradeInsert = {
     user_id: user.id,
     ticker: (body.ticker as string).toUpperCase(),
@@ -58,7 +66,7 @@ export async function POST(request: Request) {
     entry_time: body.entry_time as string,
     exit_time: (body.exit_time as string) ?? null,
     pnl,
-    score: null,
+    score,
     notes: (body.notes as string) ?? null,
     tags: (body.tags as string[]) ?? [],
   }

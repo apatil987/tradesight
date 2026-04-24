@@ -7,6 +7,7 @@ const links = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/dashboard/add-trade', label: 'Add Trade' },
   { href: '/dashboard/history', label: 'Trade History' },
+  { href: '/dashboard/analytics', label: 'Analytics' },
 ]
 
 export default function Sidebar() {
