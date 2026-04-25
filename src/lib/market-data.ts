@@ -7,13 +7,30 @@ export interface MarketData {
   price_10min_after_exit: number | null
   max_high_during_hold: number | null
   max_high_after_exit: number | null
+  min_low_during_hold: number | null
+  min_low_after_exit: number | null
   moved_in_favor: boolean | null
 }
 
-function toDateAndTime(iso: string): { date: string; time: string } {
-  const normalized = iso.slice(0, 16) // "2026-04-09T09:55"
-  const [date, time] = normalized.split('T')
-  return { date, time }
+function utcToEastern(iso: string): { date: string; time: string } {
+  const dt = new Date(iso)
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(dt)
+
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? ''
+  const hour = get('hour') === '24' ? '00' : get('hour')
+
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    time: `${hour}:${get('minute')}`,
+  }
 }
 
 const SERVICE_URL = process.env.MARKET_DATA_SERVICE_URL ?? 'http://localhost:8000'
@@ -24,13 +41,11 @@ export async function fetchMarketData(
   exitIso: string,
 ): Promise<MarketData | null> {
   try {
-    const { date, time: entry_time } = toDateAndTime(entryIso)
-    const { time: exit_time } = toDateAndTime(exitIso)
+    const { date, time: entry_time } = utcToEastern(entryIso)
+    const { time: exit_time } = utcToEastern(exitIso)
 
-    const params = new URLSearchParams({ ticker, date, entry_time, exit_time })
-    const res = await fetch(`${SERVICE_URL}/candles?${params}`, {
-      next: { revalidate: 3600 }, // historical candles don't change
-    })
+    const params = new URLSearchParams({ ticker, date, entry_time, exit_time, tz: 'America/New_York'})
+    const res = await fetch(`${SERVICE_URL}/candles?${params}`)
 
     if (!res.ok) return null
     return (await res.json()) as MarketData

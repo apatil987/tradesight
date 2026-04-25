@@ -41,8 +41,8 @@ export default function TradeForm({ initialData, tradeId }: TradeFormProps) {
       quantity: Number(fd.get('quantity')),
       entry_price: Number(fd.get('entry_price')),
       exit_price: fd.get('exit_price') ? Number(fd.get('exit_price')) : null,
-      entry_time: fd.get('entry_time'),
-      exit_time: fd.get('exit_time') || null,
+      entry_time: fd.get('entry_time') ? new Date(fd.get('entry_time') as string).toISOString() : null,
+      exit_time: fd.get('exit_time') ? new Date(fd.get('exit_time') as string).toISOString() : null,
       notes: fd.get('notes') || null,
       tags,
     }

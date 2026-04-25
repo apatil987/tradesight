@@ -22,9 +22,11 @@ function scoreLabelColor(score: number): string {
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', {
+  return new Date(iso).toLocaleString('en-US', {
+    timeZone: 'America/New_York',
     month: 'long', day: 'numeric', year: 'numeric',
     hour: 'numeric', minute: '2-digit',
+    timeZoneName: 'short',
   })
 }
 

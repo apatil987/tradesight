@@ -25,6 +25,8 @@ class CandleResponse(BaseModel):
     price_10min_after_exit: float | None
     max_high_during_hold: float | None
     max_high_after_exit: float | None
+    min_low_during_hold: float | None
+    min_low_after_exit: float | None
     moved_in_favor: bool | None
 
 
@@ -61,12 +63,21 @@ def get_closest_price(df: pd.DataFrame, target_dt: datetime, tolerance_minutes: 
 
 
 def get_max_high(df: pd.DataFrame, start_dt: datetime, end_dt: datetime) -> float | None:
-    """Return the maximum High in the half-open interval [start_dt, end_dt]."""
+    """Return the maximum High in the interval [start_dt, end_dt]."""
     mask = (df.index >= start_dt) & (df.index <= end_dt)
     subset = df.loc[mask]
     if subset.empty:
         return None
     return float(subset["High"].max())
+
+
+def get_min_low(df: pd.DataFrame, start_dt: datetime, end_dt: datetime) -> float | None:
+    """Return the minimum Low in the interval [start_dt, end_dt]."""
+    mask = (df.index >= start_dt) & (df.index <= end_dt)
+    subset = df.loc[mask]
+    if subset.empty:
+        return None
+    return float(subset["Low"].min())
 
 
 @app.get("/candles", response_model=CandleResponse)
@@ -75,7 +86,7 @@ def get_candles(
     date: str = Query(..., description="Trading date in YYYY-MM-DD format"),
     entry_time: str = Query(..., description="Entry time in HH:MM format"),
     exit_time: str = Query(..., description="Exit time in HH:MM format"),
-    tz: str = Query(default="America/New_York", description="Timezone for the provided times"),
+    tz: str = Query(default="UTC", description="Timezone for the provided times"),
 ):
     # Validate and parse inputs
     try:
@@ -128,8 +139,11 @@ def get_candles(
     price_5min_after_exit = get_closest_price(df, exit_dt + timedelta(minutes=5))
     price_10min_after_exit = get_closest_price(df, exit_dt + timedelta(minutes=10))
 
+    eod_dt = local_tz.localize(datetime.strptime(f"{date} 16:00", "%Y-%m-%d %H:%M"))
     max_high_during_hold = get_max_high(df, entry_dt, exit_dt)
-    max_high_after_exit = get_max_high(df, exit_dt, exit_dt + timedelta(minutes=30))
+    max_high_after_exit  = get_max_high(df, exit_dt, eod_dt)
+    min_low_during_hold  = get_min_low(df,  entry_dt, exit_dt)
+    min_low_after_exit   = get_min_low(df,  exit_dt,  eod_dt)
 
     # moved_in_favor: did price rise in the first 5 minutes after entry?
     price_5min_after_entry = get_closest_price(df, entry_dt + timedelta(minutes=5))
@@ -147,6 +161,8 @@ def get_candles(
         price_10min_after_exit=price_10min_after_exit,
         max_high_during_hold=max_high_during_hold,
         max_high_after_exit=max_high_after_exit,
+        min_low_during_hold=min_low_during_hold,
+        min_low_after_exit=min_low_after_exit,
         moved_in_favor=moved_in_favor,
     )
 
