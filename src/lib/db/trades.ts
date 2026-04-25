@@ -79,5 +79,9 @@ export async function getTradeStats(userId: string) {
       ? scoredTrades.reduce((sum, t) => sum + (t.score ?? 0), 0) / scoredTrades.length
       : null
 
-  return { total, totalPnl, winRate, avgScore }
+  const pnlValues = trades.map((t) => t.pnl).filter((p): p is number => p !== null)
+  const bestPnl = pnlValues.length > 0 ? Math.max(...pnlValues) : null
+  const worstPnl = pnlValues.length > 0 ? Math.min(...pnlValues) : null
+
+  return { total, totalPnl, winRate, avgScore, bestPnl, worstPnl }
 }

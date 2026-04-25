@@ -29,3 +29,16 @@ export interface Trade {
 
 export type TradeInsert = Omit<Trade, 'id' | 'created_at'>
 export type TradeUpdate = Partial<TradeInsert>
+
+export interface ParsedOrder {
+  ticker: string
+  action: 'buy' | 'sell'
+  quantity: number
+  price: number
+  date: string        // YYYY-MM-DD
+  time: string        // HH:MM 24hr
+  asset_type: 'stock' | 'option'
+  option_type: 'call' | 'put' | null
+  strike: number | null
+  expiration: string | null  // YYYY-MM-DD
+}
